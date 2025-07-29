@@ -1,8 +1,10 @@
 import asyncio
 import contextlib
+import io
 import os
 
 from errors import send_error_message
+from pdf2image import convert_from_path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -39,15 +41,30 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_error_message(update, "В библиотеке нет доступных книг.")
             return
 
-        keyboard = [
-            [InlineKeyboardButton(f"Забрать книгу: {book}", callback_data=f"get_book:{book}")] for book in books
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        def get_pdf_preview_in_memory(pdf_path: str):
+            # Получаем первую страницу PDF в виде изображения
+            images = convert_from_path(f"{BOOKS_DIR}/{pdf_path}", first_page=1, last_page=1)
+            if images:
+                img_byte_arr = io.BytesIO()
+                images[0].save(img_byte_arr, format="JPEG")
+                img_byte_arr.seek(0)  # Перемещаем указатель в начало
+                return img_byte_arr
+            return None
+
+        for book in books:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=get_pdf_preview_in_memory(book),
+                caption=f"Забрать книгу: {book}",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Забрать", callback_data=f"get_book:{book}")]]
+                ),
+            )
 
         if update.message:
-            await update.message.reply_text("Выберите книгу:", reply_markup=reply_markup)
+            await update.message.reply_text("Выберите книгу:")
         elif update.callback_query:
-            await update.callback_query.message.edit_text("Выберите книгу:", reply_markup=reply_markup)
+            await update.callback_query.message.edit_text("Выберите книгу:")
 
     except Exception as e:
         await send_error_message(update, f"Ошибка при чтении каталога книг: {e}")
