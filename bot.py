@@ -2,7 +2,10 @@ import asyncio
 import io
 import os
 from datetime import datetime
+
 from errors import send_error_message
+from help import help_text
+from logger_config import logger
 from pdf2image import convert_from_path
 from punishment_system import PunishmentSystem
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -14,7 +17,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from help import help_text
+
 BOOKS_DIR = "books"
 
 
@@ -67,7 +70,9 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.callback_query.message.edit_text("Выберите книгу:")
 
     except Exception as e:
-        await send_error_message(update, f"Ошибка при чтении каталога книг: {e}")
+        error = f"Ошибка при чтении каталога книг: {e}"
+        logger.error(error)
+        await send_error_message(update, error)
 
 
 async def get_my_debt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,8 +82,13 @@ async def get_my_debt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_error_message(update, "У вас нет долгов, пользуйтесь на здоровье :)")
         return
     borrowed_at = datetime.fromisoformat(user_info["borrowed_at"])
-    debd_message = f"Ваш текущий долг:\n\nНазвание книги: {user_info["book"]}\nДата выдачи: {borrowed_at}\n\nНе забудьте вернуть вовремя!"
-    
+    debd_message = (
+        f"Ваш текущий долг:\n\n"
+        f"Название книги: {user_info['book']}\n"
+        f"Дата выдачи: {borrowed_at}\n\n"
+        f"Не забудьте вернуть вовремя!"
+    )
+
     await send_error_message(update, debd_message)
 
 
@@ -89,8 +99,9 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
     try:
         await query.message.delete()
     except Exception as e:
-        # Можно залогировать ошибку, если сообщение уже удалено или недоступно
-        await send_error_message(update, f"Не удалось удалить сообщение: {e}")
+        error = f"Не удалось удалить сообщение: {e}"
+        logger.error(error)
+        await send_error_message(update, error)
 
     if punishment_system.get_user_info(user_id):
         await send_error_message(update, "Сначала верните текущую книгу, которую взяли.")
@@ -106,7 +117,9 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
         with open(filepath, "rb") as file:
             await query.message.reply_document(document=file, filename=book_name)
     except Exception as e:
-        await send_error_message(update, f"Ошибка при отправке книги: {e}")
+        error = f"Ошибка при отправке книги: {e}"
+        logger.error(error)
+        await send_error_message(update, error)
         return
 
     # Удаляем файл из каталога и отмечаем книгу как выданную
@@ -114,7 +127,9 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
         os.remove(filepath)
         punishment_system.add_borrow(user_id, book_name)
     except Exception as e:
-        await send_error_message(update, f"Ошибка при обновлении статуса книги: {e}")
+        error = f"Ошибка при обновлении статуса книги: {e}"
+        logger.error(error)
+        await send_error_message(update, error)
         return
 
     await query.message.reply_text(f"Вы взяли книгу '{book_name}'. Пожалуйста, верните её позже!")
@@ -147,7 +162,9 @@ async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pdf_file = await document.get_file()
         await pdf_file.download_to_drive(file_path)
     except Exception as e:
-        await send_error_message(update, f"Ошибка при сохранении файла: {e}")
+        error = f"Ошибка при сохранении файла: {e}"
+        logger.error(error)
+        await send_error_message(update, error)
         return
 
     punishment_system.return_book(user_id)
