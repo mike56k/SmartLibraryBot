@@ -1,10 +1,10 @@
 import asyncio
-import contextlib
 import io
 import os
 
 from errors import send_error_message
 from pdf2image import convert_from_path
+from punishment_system import PunishmentSystem
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -15,10 +15,8 @@ from telegram.ext import (
     filters,
 )
 
-
-from punishment_system import PunishmentSystem
-
 BOOKS_DIR = "books"
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -102,6 +100,7 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
 
     await query.message.reply_text(f"Вы взяли книгу '{book_name}'. Пожалуйста, верните её позже!")
 
+
 async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_info = punishment_system.get_user_info(user_id)
@@ -131,11 +130,11 @@ async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await send_error_message(update, f"Ошибка при сохранении файла: {e}")
         return
-    
+
     punishment_system.return_book(user_id)
 
     await update.message.reply_text(f"Спасибо, книга '{book_name}' успешно возвращена в библиотеку!")
-    
+
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -154,7 +153,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-
     global punishment_system
     # Создайте папку books рядом с этим скриптом, если ее нет
     if not os.path.exists(BOOKS_DIR):
@@ -164,7 +162,7 @@ def main():
     app = ApplicationBuilder().token(token).build()
 
     punishment_system = PunishmentSystem(app.bot)
-    
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(punishment_system.start())
@@ -172,7 +170,6 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), handle_pdf_return))
-
 
     print("Бот запущен...")
     app.run_polling()
