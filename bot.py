@@ -24,7 +24,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Команды:\n"
         "/list - посмотреть доступные книги\n"
         "/get <название.pdf> - взять книгу\n"
-        "/return - вернуть книгу (загрузите PDF с командой)\n"
+        "Чтобы вернуть книгу, загрузите PDF c **корректным** названием.\n"
     )
 
 
