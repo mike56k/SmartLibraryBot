@@ -13,9 +13,10 @@ from telegram.ext import (
     filters,
 )
 
-BOOKS_DIR = "books"
-borrowed_books = {}
 
+from punishment_system import PunishmentSystem
+
+BOOKS_DIR = "books"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -57,7 +58,7 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
     user_id = update.effective_user.id
     query = update.callback_query
 
-    if user_id in borrowed_books:
+    if punishment_system.get_user_info(user_id):
         await send_error_message(update, "Сначала верните текущую книгу, которую взяли.")
         return
 
@@ -77,32 +78,17 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
     # Удаляем файл из каталога и отмечаем книгу как выданную
     try:
         os.remove(filepath)
-        borrowed_books[user_id] = book_name
+        punishment_system.add_borrow(user_id, book_name)
     except Exception as e:
         await send_error_message(update, f"Ошибка при обновлении статуса книги: {e}")
         return
 
     await query.message.reply_text(f"Вы взяли книгу '{book_name}'. Пожалуйста, верните её позже!")
 
-    # Запускаем напоминание о возврате (через 60 секунд)
-    asyncio.create_task(remind_return(context.bot, user_id, book_name))  # noqa: RUF006
-
-
-async def remind_return(bot, user_id, book_name):
-    await asyncio.sleep(60)  # Ждём 60 секунд
-    if borrowed_books.get(user_id) == book_name:
-        with contextlib.suppress(Exception):
-            await bot.send_message(
-                chat_id=user_id,
-                text=(f"Пожалуйста, не забудьте вернуть книгу '{book_name}'. Отправьте PDF файла с командой /return."),
-            )
-
-
 async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    print(f"borrowed_books keys: {list(borrowed_books.keys())}, current user_id: {user_id}")
-
-    if user_id not in borrowed_books:
+    user_info = punishment_system.get_user_info(user_id)
+    if not user_info:
         await send_error_message(update, "У вас нет взятых книг для возврата.")
         return
 
@@ -111,7 +97,12 @@ async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_error_message(update, "Пожалуйста, загрузите PDF файл с книгой для возврата.")
         return
 
-    book_name = borrowed_books[user_id]
+    book_name = user_info["book"]
+
+    if book_name != document.file_name:
+        await send_error_message(update, "Пожалуйста, верните ту же книгу, которую вы взяли!")
+        return
+
     file_path = os.path.join(BOOKS_DIR, book_name)
 
     try:
@@ -123,10 +114,11 @@ async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await send_error_message(update, f"Ошибка при сохранении файла: {e}")
         return
+    
+    punishment_system.return_book(user_id)
 
-    del borrowed_books[user_id]
     await update.message.reply_text(f"Спасибо, книга '{book_name}' успешно возвращена в библиотеку!")
-
+    
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -145,15 +137,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+
+    global punishment_system
+    # Создайте папку books рядом с этим скриптом, если ее нет
     if not os.path.exists(BOOKS_DIR):
         os.makedirs(BOOKS_DIR)
 
     token = os.getenv("BOT_TOKEN")
     app = ApplicationBuilder().token(token).build()
 
+    punishment_system = PunishmentSystem(app.bot)
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(punishment_system.start())
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), handle_pdf_return))
+
 
     print("Бот запущен...")
     app.run_polling()
