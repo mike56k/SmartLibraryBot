@@ -14,7 +14,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-
+from help import help_text
 BOOKS_DIR = "books"
 
 
@@ -147,7 +147,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         book_name = data.split("get_book:", 1)[1]
         await get_book(update, context, book_name)
     elif data == "help":
-        await query.edit_message_text("Здесь помощь...")
+        await query.edit_message_text(help_text)
     else:
         await send_error_message(update, "Неизвестная команда.")
 
