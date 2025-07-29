@@ -72,6 +72,12 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name: str):
     user_id = update.effective_user.id
     query = update.callback_query
+    # Удаляем сообщение со списком книг после нажатия кнопки
+    try:
+        await query.message.delete()
+    except Exception as e:
+        # Можно залогировать ошибку, если сообщение уже удалено или недоступно
+        await send_error_message(update, f"Не удалось удалить сообщение: {e}")
 
     if punishment_system.get_user_info(user_id):
         await send_error_message(update, "Сначала верните текущую книгу, которую взяли.")
