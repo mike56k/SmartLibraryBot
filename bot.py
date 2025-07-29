@@ -2,80 +2,94 @@ import asyncio
 import contextlib
 import os
 
-from telegram import Update
+from errors import send_error_message
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
     filters,
 )
 
-# Папка для хранения PDF книг
 BOOKS_DIR = "books"
-
-# В памяти храним, какие книги кому выданы: user_id -> book filename
 borrowed_books = {}
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Привет! Это бот-библиотека.\n"
-        "Команды:\n"
-        "/list - посмотреть доступные книги\n"
-        "/get <название.pdf> - взять книгу\n"
-        "Чтобы вернуть книгу, загрузите PDF c **корректным** названием.\n"
-    )
+    keyboard = [
+        [InlineKeyboardButton("Список книг", callback_data="list_books")],
+        [InlineKeyboardButton("Помощь", callback_data="help")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Привет! Это бот-библиотека.", reply_markup=reply_markup)
 
 
 async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        if not os.path.exists(BOOKS_DIR):
+            await send_error_message(update, "Папка с книгами не найдена.")
+            return
+
         files = os.listdir(BOOKS_DIR)
-        pdf_files = [f for f in files if f.lower().endswith(".pdf")]
-        if not pdf_files:
-            await update.message.reply_text("В библиотеке нет доступных книг.")
-        else:
-            await update.message.reply_text("Доступные книги:\n" + "\n".join(pdf_files))
+        books = [f for f in files if f.lower().endswith(".pdf")]
+
+        if not books:
+            await send_error_message(update, "В библиотеке нет доступных книг.")
+            return
+
+        keyboard = [
+            [InlineKeyboardButton(f"Забрать книгу: {book}", callback_data=f"get_book:{book}")] for book in books
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        if update.message:
+            await update.message.reply_text("Выберите книгу:", reply_markup=reply_markup)
+        elif update.callback_query:
+            await update.callback_query.message.edit_text("Выберите книгу:", reply_markup=reply_markup)
+
     except Exception as e:
-        await update.message.reply_text(f"Ошибка при чтении каталога книг: {e}")
+        await send_error_message(update, f"Ошибка при чтении каталога книг: {e}")
 
 
-async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) == 0:
-        await update.message.reply_text("Укажите название книги после команды /get")
-        return
-    book_name = " ".join(context.args)
-    filepath = os.path.join(BOOKS_DIR, book_name)
-
+async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name: str):
     user_id = update.effective_user.id
+    query = update.callback_query
+
     if user_id in borrowed_books:
-        await update.message.reply_text("Сначала верните текущую книгу, которую взяли.")
+        await send_error_message(update, "Сначала верните текущую книгу, которую взяли.")
         return
 
+    filepath = os.path.join(BOOKS_DIR, book_name)
     if not os.path.isfile(filepath):
-        await update.message.reply_text("Такой книги нет или она недоступна.")
+        await send_error_message(update, "Такой книги нет или она недоступна.")
         return
 
-    # Отправляем файл
+    # Отправляем файл книги и фиксируем выдачу
     try:
         with open(filepath, "rb") as file:
-            await update.message.reply_document(document=file, filename=book_name)
+            await query.message.reply_document(document=file, filename=book_name)
     except Exception as e:
-        await update.message.reply_text(f"Ошибка при отправке книги: {e}")
+        await send_error_message(update, f"Ошибка при отправке книги: {e}")
         return
 
-    # Удаляем файл с каталога доступных книг, фиксируем выдачу
-    os.remove(filepath)
-    borrowed_books[user_id] = book_name
+    # Удаляем файл из каталога и отмечаем книгу как выданную
+    try:
+        os.remove(filepath)
+        borrowed_books[user_id] = book_name
+    except Exception as e:
+        await send_error_message(update, f"Ошибка при обновлении статуса книги: {e}")
+        return
 
-    await update.message.reply_text(f"Вы взяли книгу '{book_name}'. Пожалуйста, верните её позже!")
+    await query.message.reply_text(f"Вы взяли книгу '{book_name}'. Пожалуйста, верните её позже!")
 
-    # Запускаем таймер напоминания (здесь 60 секунд — можно увеличить)
+    # Запускаем напоминание о возврате (через 60 секунд)
     asyncio.create_task(remind_return(context.bot, user_id, book_name))  # noqa: RUF006
 
 
 async def remind_return(bot, user_id, book_name):
-    await asyncio.sleep(60)  # Время ожидания перед напоминанием (секунды)
+    await asyncio.sleep(60)  # Ждём 60 секунд
     if borrowed_books.get(user_id) == book_name:
         with contextlib.suppress(Exception):
             await bot.send_message(
@@ -87,29 +101,50 @@ async def remind_return(bot, user_id, book_name):
 async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     print(f"borrowed_books keys: {list(borrowed_books.keys())}, current user_id: {user_id}")
+
     if user_id not in borrowed_books:
-        await update.message.reply_text("У вас нет взятых книг для возврата.")
+        await send_error_message(update, "У вас нет взятых книг для возврата.")
         return
 
-    # Проверяем, что пользователь прислал PDF файл
-    if update.message.document is None or not update.message.document.file_name.lower().endswith(".pdf"):
-        await update.message.reply_text("Пожалуйста, загрузите PDF файл с книгой для возврата.")
+    document = update.message.document
+    if not document or not document.file_name.lower().endswith(".pdf"):
+        await send_error_message(update, "Пожалуйста, загрузите PDF файл с книгой для возврата.")
         return
 
     book_name = borrowed_books[user_id]
     file_path = os.path.join(BOOKS_DIR, book_name)
 
-    # Скачиваем файл
-    pdf_file = await update.message.document.get_file()
-    await pdf_file.download_to_drive(file_path)
+    try:
+        if not os.path.exists(BOOKS_DIR):
+            os.makedirs(BOOKS_DIR)
 
-    # Убираем отметку о выданной книге
+        pdf_file = await document.get_file()
+        await pdf_file.download_to_drive(file_path)
+    except Exception as e:
+        await send_error_message(update, f"Ошибка при сохранении файла: {e}")
+        return
+
     del borrowed_books[user_id]
     await update.message.reply_text(f"Спасибо, книга '{book_name}' успешно возвращена в библиотеку!")
 
 
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    if data == "list_books":
+        await list_books(update, context)
+    elif data.startswith("get_book:"):
+        book_name = data.split("get_book:", 1)[1]
+        await get_book(update, context, book_name)
+    elif data == "help":
+        await query.edit_message_text("Здесь помощь...")
+    else:
+        await send_error_message(update, "Неизвестная команда.")
+
+
 def main():
-    # Создайте папку books рядом с этим скриптом, если ее нет
     if not os.path.exists(BOOKS_DIR):
         os.makedirs(BOOKS_DIR)
 
@@ -117,8 +152,7 @@ def main():
     app = ApplicationBuilder().token(token).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("list", list_books))
-    app.add_handler(CommandHandler("get", get_book))
+    app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), handle_pdf_return))
 
     print("Бот запущен...")
