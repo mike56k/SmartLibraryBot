@@ -1,7 +1,7 @@
 import asyncio
 import io
 import os
-
+from datetime import datetime
 from errors import send_error_message
 from pdf2image import convert_from_path
 from punishment_system import PunishmentSystem
@@ -21,6 +21,7 @@ BOOKS_DIR = "books"
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Список книг", callback_data="list_books")],
+        [InlineKeyboardButton("Мой долг", callback_data="get_my_debt")],
         [InlineKeyboardButton("Помощь", callback_data="help")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -67,6 +68,18 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await send_error_message(update, f"Ошибка при чтении каталога книг: {e}")
+
+
+async def get_my_debt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_info = punishment_system.get_user_info(user_id)
+    if not user_info:
+        await send_error_message(update, "У вас нет долгов, пользуйтесь на здоровье :)")
+        return
+    borrowed_at = datetime.fromisoformat(user_info["borrowed_at"])
+    debd_message = f"Ваш текущий долг:\n\nНазвание книги: {user_info["book"]}\nДата выдачи: {borrowed_at}\n\nНе забудьте вернуть вовремя!"
+    
+    await send_error_message(update, debd_message)
 
 
 async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name: str):
@@ -148,6 +161,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await get_book(update, context, book_name)
     elif data == "help":
         await query.edit_message_text(help_text)
+    elif data == "get_my_debt":
+        await get_my_debt(update, context)
     else:
         await send_error_message(update, "Неизвестная команда.")
 
