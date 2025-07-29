@@ -85,25 +85,23 @@ async def remind_return(bot, user_id, book_name):
             # Игнорируем ошибки отправки напоминания
             pass
 
-async def return_book(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_pdf_return(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in borrowed_books:
         await update.message.reply_text("У вас нет взятых книг для возврата.")
         return
 
-    # Проверяем, что пользователь прислал PDF файл
     if update.message.document is None or not update.message.document.file_name.lower().endswith('.pdf'):
-        await update.message.reply_text("Пожалуйста, загрузите PDF файл для возврата книги.")
+        await update.message.reply_text("Пожалуйста, загрузите PDF файл с книгой для возврата.")
         return
 
     book_name = borrowed_books[user_id]
     file_path = os.path.join(BOOKS_DIR, book_name)
 
     # Скачиваем файл
-    file = await update.message.document.get_file()
-    await file.download_to_drive(file_path)
+    pdf_file = await update.message.document.get_file()
+    await pdf_file.download_to_drive(file_path)
 
-    # Убираем отметку о выданной книге
     del borrowed_books[user_id]
     await update.message.reply_text(f"Спасибо, книга '{book_name}' успешно возвращена в библиотеку!")
 
@@ -112,14 +110,12 @@ def main():
     if not os.path.exists(BOOKS_DIR):
         os.makedirs(BOOKS_DIR)
 
-    app = ApplicationBuilder().token("8437183358:AAGYNCMSgkk8Jc5RZomlx8h4x7-mxgOMAzg").build()
+    app = ApplicationBuilder().token("TOKEN :)").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_books))
     app.add_handler(CommandHandler("get", get_book))
-    app.add_handler(CommandHandler("return", return_book))
-    # Можно для удобства обрабатывать pdf без команды "return", если хотите:
-    # app.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), return_book))
+    app.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), handle_pdf_return))
 
     print("Бот запущен...")
     app.run_polling()
