@@ -1,3 +1,4 @@
 python-telegram-bot
 pytest
 pytest-asyncio
+pdf2image
