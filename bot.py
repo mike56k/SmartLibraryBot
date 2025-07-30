@@ -2,6 +2,7 @@ import asyncio
 import io
 import os
 from datetime import datetime
+from PIL import Image
 
 from errors import send_error_message
 from help import help_text
@@ -19,7 +20,7 @@ from telegram.ext import (
 )
 
 BOOKS_DIR = "books"
-
+DEFAULT_PREVIEW_PATH = "book_preview.png"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -57,6 +58,14 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 error = f"Ошибка при создании превью кники: {e}"
                 logger.error(error)
+
+            try:
+                with open(DEFAULT_PREVIEW_PATH, "rb") as f:
+                    default_img = io.BytesIO(f.read())
+                    default_img.seek(0)
+                    return default_img
+            except Exception as e:
+                logger.error(f"Не удалось загрузить стандартное изображение: {e}")
                 return None
 
         for book in books:
