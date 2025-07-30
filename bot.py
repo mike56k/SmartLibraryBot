@@ -45,14 +45,19 @@ async def list_books(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         def get_pdf_preview_in_memory(pdf_path: str):
-            # Получаем первую страницу PDF в виде изображения
-            images = convert_from_path(f"{BOOKS_DIR}/{pdf_path}", first_page=1, last_page=1)
-            if images:
-                img_byte_arr = io.BytesIO()
-                images[0].save(img_byte_arr, format="JPEG")
-                img_byte_arr.seek(0)  # Перемещаем указатель в начало
-                return img_byte_arr
-            return None
+            try:
+                # Получаем первую страницу PDF в виде изображения
+                images = convert_from_path(f"{BOOKS_DIR}/{pdf_path}", first_page=1, last_page=1)
+                if images:
+                    img_byte_arr = io.BytesIO()
+                    images[0].save(img_byte_arr, format="JPEG")
+                    img_byte_arr.seek(0)  # Перемещаем указатель в начало
+                    return img_byte_arr
+                return None
+            except Exception as e:
+                error = f"Ошибка при создании превью кники: {e}"
+                logger.error(error)
+                return None
 
         for book in books:
             await context.bot.send_photo(
