@@ -9,7 +9,7 @@ __pycache__/
 
 # DB
 *.db
-bot/infrastructure/borrowed_data.json
+bot/infrastructure/jsondb/borrowed_data.json
 
 # Distribution / packaging
 .Python

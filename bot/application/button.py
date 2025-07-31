@@ -1,5 +1,5 @@
 from services.errors import send_error_message
-from services.help import help_text
+from resources.help_text import help_text
 from telegram import Update
 from telegram.ext import (
     ContextTypes,
@@ -21,7 +21,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         book_name = data.split("get_book:", 1)[1]
         await get_book(update, context, book_name)
     elif data == "help":
-        print("AAAAAAAAAAAAAAAAAa")
         await query.edit_message_text(help_text)
     elif data == "get_my_debt":
         await get_my_debt(update, context)

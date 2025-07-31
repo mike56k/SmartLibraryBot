@@ -42,7 +42,6 @@ class Settings(BaseSettings):
     @computed_field
     @cached_property
     def APP(self) -> Application:  # noqa: N802
-        print(self.BOT_TOKEN)
         return ApplicationBuilder().token(self.BOT_TOKEN).build()
 
     @computed_field

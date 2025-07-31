@@ -11,7 +11,6 @@ class PunishmentSystemService:
     """
 
     BORROWED_DATA_FILE = f"{Path(__file__).resolve().parent.parent}/infrastructure/borrowed_data.json"
-    print(BORROWED_DATA_FILE)
 
     def __init__(self, bot, reminder_interval_minutes=60 * 24, max_borrow_days=14, fine_per_day=10):
         """
@@ -33,7 +32,6 @@ class PunishmentSystemService:
         self._running = False
 
     def _load_data(self):
-        print(self.BORROWED_DATA_FILE)
         if os.path.isfile(self.BORROWED_DATA_FILE):
             with open(self.BORROWED_DATA_FILE, encoding="utf-8") as f:
                 self.borrowed_books = json.load(f)
