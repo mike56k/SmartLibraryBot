@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import sys
+from pathlib import Path
 
 from application.book import return_book
 from application.button import handle_buttons
@@ -20,12 +21,19 @@ logger = logging.getLogger("bot")
 
 
 class ReloadHandler(FileSystemEventHandler):
+    EXCLUDE_PATHS: list[str] = [
+        settings.BORROWED_DATA_FILE.relative_to(settings.BASE_PATH).as_posix(),
+        Path(settings.BOOKS_DIR).relative_to(settings.BASE_PATH.parent).as_posix(),
+        "__pycache__",
+    ]
+
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
 
     def on_any_event(self, event: FileSystemEvent):
-        logger.info("Изменение обнаружено, перезапускаем бота...")
-        self.loop.call_soon_threadsafe(self.restart)
+        if not any(excluded in event.src_path for excluded in self.EXCLUDE_PATHS):
+            logger.info("Изменение обнаружено, перезапускаем бота...")
+            self.loop.call_soon_threadsafe(self.restart)
 
     def restart(self):
         logger.info("Перезапуск процесса...")

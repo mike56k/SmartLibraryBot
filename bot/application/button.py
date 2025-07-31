@@ -1,5 +1,5 @@
-from services.errors import send_error_message
 from resources.help_text import help_text
+from services.errors import send_error_message
 from telegram import Update
 from telegram.ext import (
     ContextTypes,

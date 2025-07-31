@@ -3,12 +3,11 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from infrastructure.settings_source import ConfigSettingsSource
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
-from telegram.ext import Application, ApplicationBuilder
-
-from infrastructure.settings_source import ConfigSettingsSource
 from services.punishment_system import PunishmentSystemService
+from telegram.ext import Application, ApplicationBuilder
 
 
 class Settings(BaseSettings):
@@ -16,7 +15,7 @@ class Settings(BaseSettings):
     CONFIG_FILE: Path = Path(BASE_PATH.parent / "bot.conf")
     LOG_FILE: Path = Path(BASE_PATH.parent / "bot.log")
     DEFAULT_PREVIEW_IMAGE: Path = Path(BASE_PATH / "infrastructure/book_preview.png")
-    BORROWED_DATA_FILE: Path = Path(BASE_PATH / "infrastructure/borrowed_data")
+    BORROWED_DATA_FILE: Path = Path(BASE_PATH / "infrastructure/jsondb/borrowed_data")
 
     BOOKS_DIR: str
     BOT_TOKEN: str
@@ -72,7 +71,7 @@ class Settings(BaseSettings):
                     "class": "logging.FileHandler",
                     "filename": self.LOG_FILE,
                     "formatter": "verbose",
-                }
+                },
             },
             "loggers": {
                 "bot": {
@@ -81,7 +80,7 @@ class Settings(BaseSettings):
                     "propagate": True,
                 }
             },
-            "datefmt": "%Y-%m-%d %H:%M:%S"
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         }
 
 
