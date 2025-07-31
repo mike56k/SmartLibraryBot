@@ -15,7 +15,7 @@ from telegram.ext import (
 def main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    print(settings.BOT_TOKEN)
+
     loop.run_until_complete(settings.PUNISHMENT_SYSTEM_SERVICE.start())
 
     settings.APP.add_handler(CommandHandler("start", start))

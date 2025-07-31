@@ -1,12 +1,14 @@
+import logging.config
 from functools import cached_property
 from pathlib import Path
 from typing import Any
 
-from infrastructure.settings_source import ConfigSettingsSource
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
-from services.punishment_system import PunishmentSystemService
 from telegram.ext import Application, ApplicationBuilder
+
+from infrastructure.settings_source import ConfigSettingsSource
+from services.punishment_system import PunishmentSystemService
 
 
 class Settings(BaseSettings):
@@ -57,7 +59,7 @@ class Settings(BaseSettings):
             "formatters": {
                 "verbose": {
                     "format": "[%(asctime)s] %(levelname)s %(message)s %(exc_info)s",
-                },
+                }
             },
             "handlers": {
                 "default": {
@@ -71,17 +73,18 @@ class Settings(BaseSettings):
                     "class": "logging.FileHandler",
                     "filename": self.LOG_FILE,
                     "formatter": "verbose",
-                },
+                }
             },
             "loggers": {
                 "bot": {
                     "handlers": ["file", "default"],
                     "level": "INFO",
                     "propagate": True,
-                },
+                }
             },
-            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
         }
 
 
 settings = Settings()  # type: ignore
+logging.config.dictConfig(settings.LOGGER_CONFIG)
