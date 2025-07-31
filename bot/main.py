@@ -46,7 +46,7 @@ def main():
         # Запускаете бота (или ваши задачи, например, polling)
         loop.run_until_complete(settings.PUNISHMENT_SYSTEM_SERVICE.start())
         logger.info("БОТИНОК ЗАПУЩЕНОМАНЭ")
-
+        logger.info("РАСПЕРЖИВАЭ ЭТУ ШАХУ")
         settings.APP.add_handler(CommandHandler("start", start))
         settings.APP.add_handler(CallbackQueryHandler(handle_buttons))
         settings.APP.add_handler(MessageHandler(filters.Document.FileExtension("pdf"), return_book))
