@@ -4,3 +4,4 @@ pytest-asyncio
 pdf2image
 pydantic
 pydantic-settings
+watchdog
