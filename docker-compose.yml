@@ -1,0 +1,15 @@
+version: "3.13"
+
+services:
+  smart_library_bot:
+    container_name: bot
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    volumes:
+      - ./books:/SmartLibraryBot/books
+  cassandra:
+    image: cassandra:latest
+    container_name: db
+    ports:
+      - "9042:9042"
