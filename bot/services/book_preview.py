@@ -1,5 +1,6 @@
 import io
 import logging
+from pathlib import Path
 
 from core.settings import settings
 from pdf2image import convert_from_path
@@ -10,7 +11,7 @@ logger = logging.getLogger("bot")
 def get_pdf_preview_in_memory(pdf_path: str):
     try:
         # Получаем первую страницу PDF в виде изображения
-        images = convert_from_path(f"{settings.BOOKS_DIR}/{pdf_path}", first_page=1, last_page=1)
+        images = convert_from_path(Path(settings.BOOKS_DIR, pdf_path), first_page=1, last_page=1)
         if images:
             img_byte_arr = io.BytesIO()
             images[0].save(img_byte_arr, format="JPEG")

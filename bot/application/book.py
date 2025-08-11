@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from core.settings import settings
 from services.errors import send_error_message
@@ -26,8 +27,8 @@ async def get_book(update: Update, context: ContextTypes.DEFAULT_TYPE, book_name
         await send_error_message(update, "Сначала верните текущую книгу, которую взяли.")
         return
 
-    filepath = os.path.join(settings.BOOKS_DIR, book_name)
-    if not os.path.isfile(filepath):
+    filepath = Path(settings.BOOKS_DIR, book_name)
+    if not filepath.exists():
         await send_error_message(update, "Такой книги нет или она недоступна.")
         return
 
@@ -72,7 +73,7 @@ async def return_book(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_error_message(update, "Пожалуйста, верните ту же книгу, которую вы взяли!")
         return
 
-    file_path = os.path.join(settings.BOOKS_DIR, book_name)
+    file_path = Path(settings.BOOKS_DIR, book_name)
 
     try:
         pdf_file = await document.get_file()

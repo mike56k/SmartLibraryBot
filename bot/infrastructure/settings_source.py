@@ -12,6 +12,17 @@ class ConfigSettingsSource(PydanticBaseSettingsSource):
         super().__init__(settings_cls)
         self.conf_setting = self._read_config()
 
+    def __call__(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+
+        for field_name, field in self.settings_cls.model_fields.items():
+            field_value, field_key, value_is_complex = self.get_field_value(field, field_name)
+            field_value = self.prepare_field_value(field_name, field, field_value, value_is_complex)
+            if field_value is not None:
+                d[field_key] = field_value
+
+        return d
+
     @staticmethod
     def _read_config():
         config = configparser.ConfigParser(allow_no_value=True, interpolation=None)
@@ -19,7 +30,7 @@ class ConfigSettingsSource(PydanticBaseSettingsSource):
         config.read(f"{project_dir}/bot.conf", "utf-8")
 
         conf_setting = {
-            "BOOKS_DIR": config.get("BASE", "BOOKS_DIR", fallback=""),
+            "BOOKS_DIR": Path(config.get("BASE", "BOOKS_DIR", fallback="")),
             "BOT_TOKEN": config.get("BASE", "BOT_TOKEN", fallback=""),
         }
         return conf_setting
@@ -41,14 +52,3 @@ class ConfigSettingsSource(PydanticBaseSettingsSource):
         value_is_complex: bool,
     ) -> Any:
         return value
-
-    def __call__(self) -> dict[str, Any]:
-        d: dict[str, Any] = {}
-
-        for field_name, field in self.settings_cls.model_fields.items():
-            field_value, field_key, value_is_complex = self.get_field_value(field, field_name)
-            field_value = self.prepare_field_value(field_name, field, field_value, value_is_complex)
-            if field_value is not None:
-                d[field_key] = field_value
-
-        return d

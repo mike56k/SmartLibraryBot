@@ -4,6 +4,11 @@ import os
 import sys
 from pathlib import Path
 
+from application.book import return_book
+from application.button import handle_buttons
+from application.starter import start
+from core.settings import settings
+from resources.start_bot_text import start_bot_text
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -13,18 +18,12 @@ from telegram.ext import (
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from application.book import return_book
-from application.button import handle_buttons
-from application.starter import start
-from core.settings import settings
-from resources.start_bot_text import start_bot_text
-
 logger = logging.getLogger("bot")
 
 
 class ReloadHandler(FileSystemEventHandler):
     EXCLUDE_PATHS: list[str] = [
-        settings.BORROWED_DATA_FILE.relative_to(settings.BASE_PATH).as_posix(),
+        settings.BORROWED_DATA_FILE.parent.relative_to(settings.BASE_PATH).as_posix(),
         Path(settings.BOOKS_DIR).relative_to(settings.BASE_PATH.parent).as_posix(),
         Path(settings.LOG_FILE).relative_to(settings.BASE_PATH.parent).as_posix(),
         "__pycache__",
@@ -34,9 +33,9 @@ class ReloadHandler(FileSystemEventHandler):
         self.loop = loop
 
     def on_any_event(self, event: FileSystemEvent):
-        if not any(excluded in event.src_path for excluded in self.EXCLUDE_PATHS):
-            logger.info(event.src_path)
-            logger.info("Изменение обнаружено, перезапускаем бота...")
+        event_path = Path(event.src_path).resolve().as_posix()
+        if not any(excluded in event_path for excluded in self.EXCLUDE_PATHS):
+            logger.info(f"Изменение обнаружено {event_path}, перезапускаем бота...")
             self.loop.call_soon_threadsafe(self.restart)
 
     def restart(self):

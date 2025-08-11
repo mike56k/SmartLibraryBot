@@ -1,8 +1,9 @@
 import asyncio
 import json
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
+
+from telegram.ext import Application
 
 
 class PunishmentSystemService:
@@ -10,9 +11,14 @@ class PunishmentSystemService:
     Класс для управления выдачей книг, напоминаниями и штрафами.
     """
 
-    BORROWED_DATA_FILE = f"{Path(__file__).resolve().parent.parent}/infrastructure/borrowed_data.json"
-
-    def __init__(self, bot, reminder_interval_minutes=60 * 24, max_borrow_days=14, fine_per_day=10):
+    def __init__(
+        self,
+        bot: Application,
+        borrowed_data_file: Path,
+        reminder_interval_minutes: int = 60 * 24,
+        max_borrow_days: int = 14,
+        fine_per_day: int = 10,
+    ):
         """
         :param bot: экземпляр telegram.Bot для отправки сообщений.
         :param reminder_interval_minutes: интервал периодического напоминания в минутах.
@@ -20,6 +26,7 @@ class PunishmentSystemService:
         :param fine_per_day: сумма штрафа за каждый день просрочки.
         """
         self.bot = bot
+        self.borrowed_data_file = borrowed_data_file
         self.reminder_interval = timedelta(minutes=reminder_interval_minutes)
         self.max_borrow_period = timedelta(days=max_borrow_days)
         self.fine_per_day = fine_per_day
@@ -32,14 +39,11 @@ class PunishmentSystemService:
         self._running = False
 
     def _load_data(self):
-        if os.path.isfile(self.BORROWED_DATA_FILE):
-            with open(self.BORROWED_DATA_FILE, encoding="utf-8") as f:
-                self.borrowed_books = json.load(f)
-        else:
-            self.borrowed_books = {}
+        with open(self.borrowed_data_file, encoding="utf-8") as f:
+            self.borrowed_books = json.load(f)
 
     def _save_data(self):
-        with open(self.BORROWED_DATA_FILE, "w", encoding="utf-8") as f:
+        with open(self.borrowed_data_file, "w", encoding="utf-8") as f:
             json.dump(self.borrowed_books, f, ensure_ascii=False, indent=2)
 
     async def start(self):

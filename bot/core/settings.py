@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from infrastructure.settings_source import ConfigSettingsSource
-from pydantic import computed_field
+from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from services.punishment_system import PunishmentSystemService
 from telegram.ext import Application, ApplicationBuilder
@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     CONFIG_FILE: Path = Path(BASE_PATH.parent / "bot.conf")
     LOG_FILE: Path = Path(BASE_PATH.parent / "bot.log")
     DEFAULT_PREVIEW_IMAGE: Path = Path(BASE_PATH / "infrastructure/book_preview.png")
-    BORROWED_DATA_FILE: Path = Path(BASE_PATH / "infrastructure/jsondb/borrowed_data")
+    BORROWED_DATA_FILE: Path = Path(BASE_PATH / "infrastructure/jsondb/borrowed_data.json")
 
-    BOOKS_DIR: str
+    BOOKS_DIR: Path
     BOT_TOKEN: str
 
     @classmethod
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     @computed_field
     @cached_property
     def PUNISHMENT_SYSTEM_SERVICE(self) -> PunishmentSystemService:  # noqa: N802
-        return PunishmentSystemService(self.APP.bot)
+        return PunishmentSystemService(self.APP.bot, self.BORROWED_DATA_FILE)
 
     @computed_field
     @cached_property
@@ -82,6 +82,13 @@ class Settings(BaseSettings):
             },
             "datefmt": "%Y-%m-%d %H:%M:%S",
         }
+
+    @field_validator("CONFIG_FILE", "LOG_FILE", "DEFAULT_PREVIEW_IMAGE", "BORROWED_DATA_FILE", "BOOKS_DIR")
+    @classmethod
+    def validate_path_exist(cls, value: Path) -> Path:
+        if not value.exists():
+            raise ValueError(f"Path does not exist: {value}")
+        return value
 
 
 settings = Settings()  # type: ignore
