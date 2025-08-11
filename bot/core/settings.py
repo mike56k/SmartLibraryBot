@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     BASE_PATH: Path = Path(__file__).resolve().parent.parent
     CONFIG_FILE: Path = Path(BASE_PATH.parent / "bot.conf")
     LOG_FILE: Path = Path(BASE_PATH.parent / "bot.log")
-    DEFAULT_PREVIEW_IMAGE: Path = Path(BASE_PATH / "infrastructure/book_preview.png")
+    DEFAULT_PREVIEW_IMAGE: Path = Path(BASE_PATH / "resources/book_preview.png")
     BORROWED_DATA_FILE: Path = Path(BASE_PATH / "infrastructure/jsondb/borrowed_data.json")
 
     BOOKS_DIR: Path

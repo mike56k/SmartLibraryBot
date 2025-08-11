@@ -8,8 +8,8 @@ services:
       dockerfile: bot/Dockerfile
     volumes:
       - ./books:/SmartLibraryBot/books
-  cassandra:
-    image: cassandra:latest
-    container_name: db
-    ports:
-      - "9042:9042"
+  # cassandra:
+  #   image: cassandra:latest
+  #   container_name: db
+  #   ports:
+  #     - "9042:9042"
