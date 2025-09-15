@@ -5,3 +5,4 @@ pdf2image
 pydantic
 pydantic-settings
 watchdog
+cassandra-driver
